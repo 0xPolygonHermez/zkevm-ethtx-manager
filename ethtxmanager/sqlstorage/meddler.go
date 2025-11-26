@@ -13,6 +13,7 @@ import (
 
 func initMeddler() {
 	meddler.Default = meddler.SQLite
+	meddler.Debug = false
 	meddler.Register("address", AddressMeddler{})
 	meddler.Register("bigInt", BigIntMeddler{})
 	meddler.Register("hash", HashMeddler{})
@@ -156,7 +157,7 @@ func (m HashMeddler) PreRead(fieldAddr interface{}) (scanTarget interface{}, err
 	}
 	return new(string), nil
 }
-func (b HashMeddler) postReadDoulePtr(fieldPtr, scanTarget interface{}) error {
+func (m HashMeddler) postReadDoublePtr(fieldPtr, scanTarget interface{}) error {
 	rawHashPtr, ok := scanTarget.(**string)
 	if !ok {
 		return errors.New("scanTarget is not **string")
@@ -181,10 +182,10 @@ func (b HashMeddler) postReadDoulePtr(fieldPtr, scanTarget interface{}) error {
 }
 
 // PostRead is called after a Scan operation for fields that have the HashMeddler
-func (b HashMeddler) PostRead(fieldPtr, scanTarget interface{}) error {
+func (m HashMeddler) PostRead(fieldPtr, scanTarget interface{}) error {
 	_, ok := scanTarget.(**string)
 	if ok {
-		return b.postReadDoulePtr(fieldPtr, scanTarget)
+		return m.postReadDoublePtr(fieldPtr, scanTarget)
 	}
 	rawHashPtr, ok := scanTarget.(*string)
 	if !ok {
@@ -197,12 +198,12 @@ func (b HashMeddler) PostRead(fieldPtr, scanTarget interface{}) error {
 		*field = common.HexToHash(*rawHashPtr)
 		return nil
 	}
-	// If fieldPtr is neither a *common.Hash nor a **common.Hash, return an error
+	// If fieldPtr is neither a *common.Hash, return an error
 	return errors.New("fieldPtr is not *common.Hash")
 }
 
 // PreWrite is called before an Insert or Update operation for fields that have the HashMeddler
-func (b HashMeddler) PreWrite(fieldPtr interface{}) (saveValue interface{}, err error) {
+func (m HashMeddler) PreWrite(fieldPtr interface{}) (saveValue interface{}, err error) {
 	field, ok := fieldPtr.(common.Hash)
 	if !ok {
 		hashPtr, ok := fieldPtr.(*common.Hash)

@@ -50,7 +50,7 @@ func TestMeddlerHashPointerIsNotNull(t *testing.T) {
 
 func TestMeddlerHashpostReadDoulePtrBadParms(t *testing.T) {
 	h := HashMeddler{}
-	err := h.postReadDoulePtr(nil, nil)
+	err := h.postReadDoublePtr(nil, nil)
 	require.Error(t, err)
 }
 
