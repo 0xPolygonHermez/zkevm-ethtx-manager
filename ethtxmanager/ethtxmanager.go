@@ -336,6 +336,10 @@ func (c *Client) add(
 	// add to storage
 	err = c.storage.Add(ctx, mTx)
 	if err != nil {
+		if errors.Is(err, types.ErrAlreadyExists) {
+			return id, ErrAlreadyExists
+		}
+
 		err := fmt.Errorf("failed to add tx to get monitored: %w", translateError(err))
 		log.Errorf(err.Error())
 		return common.Hash{}, err
