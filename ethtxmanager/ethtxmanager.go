@@ -776,6 +776,11 @@ func (c *Client) monitorTx(ctx context.Context, mTx *monitoredTxnIteration, logg
 		// if we should continue to monitor, we move to the next one and this will
 		// be reviewed in the next monitoring cycle
 		if c.shouldContinueToMonitorThisTx(ctx, mTx.lastReceipt) {
+			mTx.RetryCount++
+			logger.Debugf("incremented retry count to %d after reverted tx receipt", mTx.RetryCount)
+			if updateErr := c.storage.Update(ctx, *mTx.MonitoredTx); updateErr != nil {
+				logger.Errorf("failed to update retry count after reverted receipt: %v", updateErr)
+			}
 			return
 		}
 		// otherwise we understand this monitored tx has failed

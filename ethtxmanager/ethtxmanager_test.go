@@ -576,3 +576,75 @@ func TestMonitorTxSendFailureRetryIncrement(t *testing.T) {
 		require.Equal(t, uint64(2), mTx.RetryCount)
 	})
 }
+
+func TestMonitorTxRevertedReceiptRetryIncrement(t *testing.T) {
+	t.Run("Reverted receipt - increments retry count", func(t *testing.T) {
+		testData := newTestData(t, true)
+		testData.sut.cfg.EstimateGasMaxRetries = 10
+
+		revertedReceipt := &ethtypes.Receipt{
+			Status: ethtypes.ReceiptStatusFailed,
+			TxHash: common.HexToHash("0xabc"),
+		}
+
+		mTx := &monitoredTxnIteration{
+			MonitoredTx: &types.MonitoredTx{
+				ID:         common.HexToHash("0x123"),
+				Status:     types.MonitoredTxStatusSent,
+				RetryCount: 3,
+				Value:      big.NewInt(0),
+				Data:       []byte{},
+				Gas:        21000,
+				GasPrice:   big.NewInt(1000000000),
+				History:    make(map[common.Hash]bool),
+			},
+			confirmed:   true,
+			lastReceipt: revertedReceipt,
+		}
+
+		// GetTx succeeds, GetRevertMessage returns ErrExecutionReverted
+		testData.ethermanMock.EXPECT().GetTx(testData.ctx, revertedReceipt.TxHash).
+			Return(ethtypes.NewTx(&ethtypes.LegacyTx{}), false, nil).Once()
+		testData.ethermanMock.EXPECT().GetRevertMessage(testData.ctx, mock.Anything).
+			Return("", ErrExecutionReverted).Once()
+
+		// Storage update for retry count increment
+		testData.storageMock.EXPECT().Update(testData.ctx, mock.MatchedBy(func(tx types.MonitoredTx) bool {
+			return tx.RetryCount == 4
+		})).Return(nil).Once()
+
+		logger := createMonitoredTxLogger(*mTx.MonitoredTx)
+		testData.sut.monitorTx(testData.ctx, mTx, logger)
+
+		require.Equal(t, uint64(4), mTx.RetryCount)
+		require.Equal(t, types.MonitoredTxStatusSent, mTx.Status, "Status should remain sent for retry")
+	})
+
+	t.Run("Reverted receipt - evicted after max retries", func(t *testing.T) {
+		testData := newTestData(t, true)
+		testData.sut.cfg.EstimateGasMaxRetries = 5
+
+		mTx := &monitoredTxnIteration{
+			MonitoredTx: &types.MonitoredTx{
+				ID:         common.HexToHash("0x456"),
+				Status:     types.MonitoredTxStatusSent,
+				RetryCount: 5,
+				Value:      big.NewInt(0),
+				Data:       []byte{},
+				Gas:        21000,
+				GasPrice:   big.NewInt(1000000000),
+				History:    make(map[common.Hash]bool),
+			},
+		}
+
+		// Should be evicted before reaching shouldContinueToMonitorThisTx
+		testData.storageMock.EXPECT().Update(testData.ctx, mock.MatchedBy(func(tx types.MonitoredTx) bool {
+			return tx.Status == types.MonitoredTxStatusEvicted
+		})).Return(nil).Once()
+
+		logger := createMonitoredTxLogger(*mTx.MonitoredTx)
+		testData.sut.monitorTx(testData.ctx, mTx, logger)
+
+		require.Equal(t, types.MonitoredTxStatusEvicted, mTx.Status)
+	})
+}
