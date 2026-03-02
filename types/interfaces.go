@@ -107,6 +107,8 @@ type StorageInterface interface {
 	// Add inserts a new MonitoredTx into the storage.
 	// It takes a context and the MonitoredTx to be added.
 	// Returns an error if the transaction cannot be stored.
+	//  error: ErrAlreadyExists if a transaction with the same ID already exists in the storage.
+	//     the ID is the hash of the transaction
 	Add(ctx context.Context, mTx MonitoredTx) error
 
 	// Remove deletes a MonitoredTx from the storage using its ID (common.Hash).

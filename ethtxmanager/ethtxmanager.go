@@ -37,7 +37,7 @@ var (
 	// ErrNotFound it's returned
 	ErrNotFound = types.ErrNotFound
 	// ErrAlreadyExists when the object already exists
-	ErrAlreadyExists = errors.New("already exists")
+	ErrAlreadyExists = types.ErrAlreadyExists
 
 	// ErrExecutionReverted returned when trying to get the revert message
 	// but the call fails without revealing the revert reason
@@ -177,14 +177,18 @@ func pendingL1Txs(URL string, from common.Address, httpHeaders map[string]string
 	return mTxs, nil
 }
 
-// Add a transaction to be sent and monitored
+// Add a transaction to be sent and monitored.
+// If the transaction already exists in storage, returns (id, ErrAlreadyExists)
+// so the caller can treat duplicates as a non-fatal condition.
 func (c *Client) Add(ctx context.Context, to *common.Address, value *big.Int,
 	data []byte, gasOffset uint64, sidecar *ethTypes.BlobTxSidecar) (common.Hash, error) {
 	hash, err := c.add(ctx, to, value, data, gasOffset, sidecar, 0)
 	return hash, translateError(err)
 }
 
-// AddWithGas adds a transaction to be sent and monitored with a defined gas to be used so it's not estimated
+// AddWithGas adds a transaction to be sent and monitored with a defined gas to be used so it's not estimated.
+// If the transaction already exists in storage, returns (id, ErrAlreadyExists)
+// so the caller can treat duplicates as a non-fatal condition.
 func (c *Client) AddWithGas(ctx context.Context, to *common.Address,
 	value *big.Int, data []byte, gasOffset uint64, sidecar *ethTypes.BlobTxSidecar, gas uint64) (common.Hash, error) {
 	hash, err := c.add(ctx, to, value, data, gasOffset, sidecar, gas)
