@@ -3,11 +3,18 @@ Stateless manager to send transactions to L1.
 
 ## Main Funtions
 ### Add Transaction
-`func (c *Client) Add(ctx context.Context, to *common.Address, forcedNonce *uint64, value *big.Int, data []byte, gasOffset uint64, sidecar *types.BlobTxSidecar) (common.Hash, error)`
+`func (c *Client) Add(ctx context.Context, to *common.Address, value *big.Int, data []byte, gasOffset uint64, sidecar *ethTypes.BlobTxSidecar) (common.Hash, error)`
 
-Adds a transaction to be sent to L1. The returned hash is calculated over the *to*, *nonce*, *value* and *data* fields.
+Adds a transaction to be sent to L1. Gas is estimated automatically. The returned hash is calculated over the *to*, *value* and *data* fields.
 
-Parameter forcedNonce is optional, if nil is passed the current nonce is obtained from the L1 node.
+If a transaction with the same hash already exists in storage, it returns `(id, ErrAlreadyExists)` instead of failing, so the caller can treat the duplicate as a non-fatal condition.
+
+### Add Transaction with Gas
+`func (c *Client) AddWithGas(ctx context.Context, to *common.Address, value *big.Int, data []byte, gasOffset uint64, sidecar *ethTypes.BlobTxSidecar, gas uint64) (common.Hash, error)`
+
+Same as `Add` but uses the provided gas value instead of estimating it.
+
+If a transaction with the same hash already exists in storage, it returns `(id, ErrAlreadyExists)` instead of failing, so the caller can treat the duplicate as a non-fatal condition.
 
 ### Remove Transaction 
 `func (c *Client) Remove(ctx context.Context, id common.Hash) error `

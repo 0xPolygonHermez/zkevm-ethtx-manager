@@ -60,6 +60,34 @@ func TestAdd(t *testing.T) {
 	require.ErrorIs(t, err, ErrNotFound)
 }
 
+func TestAddAlreadyExists(t *testing.T) {
+	to := common.HexToAddress("0x1")
+	value := big.NewInt(1)
+	data := []byte{}
+	expectedID := ethtypes.NewTx(&ethtypes.LegacyTx{To: &to, Value: value, Data: data}).Hash()
+
+	t.Run("AddWithGas returns ErrAlreadyExists and the tx hash", func(t *testing.T) {
+		testData := newTestData(t, true)
+		testData.ethermanMock.EXPECT().SuggestedGasPrice(testData.ctx).Return(big.NewInt(1), nil).Once()
+		testData.storageMock.EXPECT().Add(testData.ctx, mock.Anything).Return(types.ErrAlreadyExists).Once()
+
+		hash, err := testData.sut.AddWithGas(testData.ctx, &to, value, data, 0, nil, 21000)
+		require.ErrorIs(t, err, ErrAlreadyExists)
+		require.Equal(t, expectedID, hash)
+	})
+
+	t.Run("Add returns ErrAlreadyExists and the tx hash", func(t *testing.T) {
+		testData := newTestData(t, true)
+		testData.ethermanMock.EXPECT().SuggestedGasPrice(testData.ctx).Return(big.NewInt(1), nil).Once()
+		testData.ethermanMock.EXPECT().EstimateGas(testData.ctx, testData.sut.from, &to, value, data).Return(uint64(21000), nil).Once()
+		testData.storageMock.EXPECT().Add(testData.ctx, mock.Anything).Return(types.ErrAlreadyExists).Once()
+
+		hash, err := testData.sut.Add(testData.ctx, &to, value, data, 0, nil)
+		require.ErrorIs(t, err, ErrAlreadyExists)
+		require.Equal(t, expectedID, hash)
+	})
+}
+
 func TestRemove(t *testing.T) {
 	testData := newTestData(t, false)
 	err := testData.sut.Remove(testData.ctx, common.HexToHash("0x1"))
